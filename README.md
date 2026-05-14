@@ -5,7 +5,7 @@
 [![CI](https://github.com/YOUR_USERNAME/alberta-career-pathways/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/alberta-career-pathways/actions)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776AB?logo=python&logoColor=white)](https://python.org)
 [![Flask](https://img.shields.io/badge/flask-3.0-black?logo=flask)](https://flask.palletsprojects.com)
-[![Anthropic](https://img.shields.io/badge/powered%20by-Claude%20AI-orange)](https://anthropic.com)
+[![Anthropic](https://img.shields.io/badge/powered%20by-Tavily-blue)](https://anthropic.com)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 A proof-of-concept aligned with the **APAS Partnership with SAIT for AI Student Capstone Placements** initiative. Students enter a career goal and receive personalised program recommendations from SAIT and NAIT, sourced via live AI-powered web search, along with a step-by-step pathway and Alberta labour market insights.
@@ -56,14 +56,14 @@ pip install -r requirements.txt
 cp .env.example .env
 ```
 
-Edit `.env` and add your Anthropic API key:
+Edit `.env` and add your Tavily API key:
 
 ```
-ANTHROPIC_API_KEY=sk-ant-your-key-here
+TAVILY_API_KEY=tvly-your-key-here
 FLASK_ENV=development
 ```
 
-> Get your API key at [console.anthropic.com](https://console.anthropic.com)
+> Get your API key at [app.tavily.com](https://app.tavily.com)
 
 ### 5. Run the app
 
@@ -133,20 +133,20 @@ POST /search  ──►  Flask receives request
 1. Fork this repo
 2. Connect to [render.com](https://render.com) → **New Web Service** → select your fork
 3. Render auto-detects `render.yaml`
-4. Add `ANTHROPIC_API_KEY` in the **Environment** tab
+4. Add `TAVILY_API_KEY` in the **Environment** tab
 5. Deploy ✅
 
 ### Railway
 
 1. Connect repo at [railway.app](https://railway.app)
-2. Add `ANTHROPIC_API_KEY` environment variable
+2. Add `TAVILY_API_KEY` environment variable
 3. Railway uses the `Procfile` automatically
 
 ### Heroku
 
 ```bash
 heroku create alberta-career-pathways
-heroku config:set ANTHROPIC_API_KEY=sk-ant-...
+heroku config:set TAVILY_API_KEY=sk-ant-...
 git push heroku main
 ```
 
@@ -154,7 +154,7 @@ git push heroku main
 
 ```bash
 docker build -t alberta-pathways .
-docker run -p 5000:5000 -e ANTHROPIC_API_KEY=sk-ant-... alberta-pathways
+docker run -p 5000:5000 -e TAVILY_API_KEY=sk-ant-... alberta-pathways
 ```
 
 ---
@@ -163,7 +163,7 @@ docker run -p 5000:5000 -e ANTHROPIC_API_KEY=sk-ant-... alberta-pathways
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | ✅ Yes | — | Your Anthropic API key |
+| `TAVILY_API_KEY` | ✅ Yes | — | Your Tavily API key |
 | `FLASK_ENV` | No | `production` | `development` enables debug mode |
 | `PORT` | No | `5000` | Port to listen on |
 

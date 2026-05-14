@@ -1,52 +1,120 @@
 import os
+import re
 import json
-import anthropic
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context
+from flask import Flask, render_template, request, Response, stream_with_context
+from tavily import TavilyClient
 
 app = Flask(__name__)
 
-client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", ""))
+
+def get_client():
+    """Lazy-init Tavily client so the app starts even before the key is set."""
+    key = os.environ.get("TAVILY_API_KEY", "")
+    if not key:
+        raise ValueError("TAVILY_API_KEY is not set. Add it to your .env file or Render dashboard.")
+    return TavilyClient(api_key=key)
 
 
-def build_prompt(career: str) -> str:
-    return f"""You are an expert Alberta post-secondary education advisor. A student wants to become a "{career}".
+def search_institution(career: str, institution: str) -> list:
+    domain = "sait.ca" if institution == "sait" else "nait.ca"
+    fallback_url = (
+        "https://www.sait.ca/programs-and-courses"
+        if institution == "sait"
+        else "https://www.nait.ca/programs"
+    )
 
-Search the SAIT (sait.ca) and NAIT (nait.ca) websites to find the most relevant programs and courses for this career goal.
+    results = get_client().search(
+        query=f"{career} program diploma certificate {domain}",
+        include_domains=[domain],
+        max_results=5,
+        search_depth="advanced",
+    )
 
-Respond in EXACTLY this JSON format (valid JSON only, no markdown fences):
+    courses = []
+    seen_urls = set()
 
-{{
-  "summary": "2 sentence overview of this career path in Alberta",
-  "insight": "1-2 sentences about Alberta job market and salary outlook for this role",
-  "sait": [
-    {{
-      "name": "Program name",
-      "desc": "2 sentence description",
-      "duration": "e.g. 2 years",
-      "credential": "e.g. Diploma",
-      "area": "e.g. Technology",
-      "url": "actual URL from sait.ca or https://www.sait.ca/programs-and-courses"
-    }}
-  ],
-  "nait": [
-    {{
-      "name": "Program name",
-      "desc": "2 sentence description",
-      "duration": "e.g. 2 years",
-      "credential": "e.g. Diploma",
-      "area": "e.g. Technology",
-      "url": "actual URL from nait.ca or https://www.nait.ca/programs"
-    }}
-  ],
-  "pathway": [
-    {{
-      "step": "Step title",
-      "detail": "Specific detail about what to do"
-    }}
-  ]
-}}
+    for r in results.get("results", []):
+        url     = r.get("url", fallback_url)
+        title   = (r.get("title") or "").strip()
+        content = (r.get("content") or "").strip()
 
-Include 3-4 SAIT programs, 3-4 NAIT programs, and 4-5 pathway steps."""
+        if url in seen_urls or not title or len(content) < 40:
+            continue
+        seen_urls.add(url)
+
+        sentences = [s.strip() for s in content.replace("\n", " ").split(".") if len(s.strip()) > 20]
+        desc = ". ".join(sentences[:2]) + "." if sentences else content[:180]
+
+        lower = (title + " " + content).lower()
+        if "bachelor" in lower or "degree" in lower:
+            credential = "Bachelor's Degree"
+        elif "diploma" in lower:
+            credential = "Diploma"
+        elif "apprenticeship" in lower:
+            credential = "Apprenticeship"
+        else:
+            credential = "Certificate"
+
+        duration = ""
+        m = re.search(r"(\d[\d.]*)\s*(year|month|semester|week)", lower)
+        if m:
+            n, unit = m.group(1), m.group(2)
+            duration = f"{n} {unit}{'s' if float(n) != 1 else ''}"
+
+        courses.append({
+            "name": title,
+            "desc": desc[:280],
+            "credential": credential,
+            "duration": duration,
+            "url": url,
+        })
+
+    return courses[:4]
+
+
+def get_market_insight(career: str) -> str:
+    try:
+        results = get_client().search(
+            query=f"{career} salary demand Alberta 2024 2025",
+            include_domains=["alis.alberta.ca", "jobbank.gc.ca", "statcan.gc.ca"],
+            max_results=2,
+            search_depth="basic",
+        )
+        snippets = [r.get("content", "")[:220] for r in results.get("results", []) if r.get("content")]
+        return snippets[0] if snippets else ""
+    except Exception:
+        return ""
+
+
+def build_pathway(career: str, sait: list, nait: list) -> list:
+    first = (sait + nait)[0]["name"] if (sait or nait) else f"{career} program"
+    return [
+        {
+            "step": "Research and confirm prerequisites",
+            "detail": "Check admission requirements for your chosen SAIT or NAIT program. "
+                      "Most require Grade 12 English and Math (Pure/Applied 20-1 or equivalent).",
+        },
+        {
+            "step": "Apply through ApplyAlberta",
+            "detail": "Create a free account at applyalberta.ca — the single portal for all Alberta "
+                      "public post-secondaries. Submit before early-bird deadlines (usually February).",
+        },
+        {
+            "step": f"Enrol in '{first}' or equivalent",
+            "detail": "Choose the program that best fits your specialisation. Attend orientation and "
+                      "connect with your student advisor in the first week.",
+        },
+        {
+            "step": "Complete practicum / work-integrated learning",
+            "detail": "Most Alberta polytechnic programs include a mandatory practicum or co-op term — "
+                      "many students receive job offers directly from their placement employer.",
+        },
+        {
+            "step": f"Enter the workforce as a {career}",
+            "detail": "Graduate, write any required certification exams (e.g. Red Seal, CPNRE, APEGA), "
+                      "and register with the relevant Alberta professional body.",
+        },
+    ]
 
 
 @app.route("/")
@@ -59,50 +127,42 @@ def search():
     data = request.get_json()
     career = (data.get("career") or "").strip()
     if not career:
-        return jsonify({"error": "Please enter a career goal."}), 400
+        return {"error": "Please enter a career goal."}, 400
 
     def generate():
         try:
             yield f"data: {json.dumps({'type': 'status', 'msg': 'Searching SAIT programs\u2026'})}\n\n"
-
-            response = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=2000,
-                tools=[{"type": "web_search_20250305", "name": "web_search"}],
-                messages=[{"role": "user", "content": build_prompt(career)}],
-            )
+            sait_courses = search_institution(career, "sait")
 
             yield f"data: {json.dumps({'type': 'status', 'msg': 'Searching NAIT programs\u2026'})}\n\n"
-
-            full_text = ""
-            for block in response.content:
-                if block.type == "text":
-                    full_text += block.text
+            nait_courses = search_institution(career, "nait")
 
             yield f"data: {json.dumps({'type': 'status', 'msg': 'Building your pathway\u2026'})}\n\n"
+            insight = get_market_insight(career)
+            pathway = build_pathway(career, sait_courses, nait_courses)
 
-            # Strip markdown fences if present
-            cleaned = full_text.strip()
-            if cleaned.startswith("```"):
-                cleaned = cleaned.split("```")[1]
-                if cleaned.startswith("json"):
-                    cleaned = cleaned[4:]
-            cleaned = cleaned.strip()
+            payload = {
+                "summary": (
+                    f"Discover Alberta post-secondary programs that lead to a career as a {career}. "
+                    "Both SAIT and NAIT offer hands-on, industry-aligned credentials recognised across the province."
+                ),
+                "insight": insight,
+                "sait":    sait_courses,
+                "nait":    nait_courses,
+                "pathway": pathway,
+            }
+            yield f"data: {json.dumps({'type': 'result', 'data': payload})}\n\n"
 
-            result = json.loads(cleaned)
-            yield f"data: {json.dumps({'type': 'result', 'data': result})}\n\n"
-
-        except json.JSONDecodeError:
-            yield f"data: {json.dumps({'type': 'error', 'msg': 'Could not parse AI response. Please try again.'})}\n\n"
-        except anthropic.AuthenticationError:
-            yield f"data: {json.dumps({'type': 'error', 'msg': 'Invalid API key. Check your ANTHROPIC_API_KEY environment variable.'})}\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'type': 'error', 'msg': str(e)})}\n\n"
+            msg = str(e)
+            if "401" in msg or "invalid" in msg.lower() or "TAVILY_API_KEY" in msg:
+                msg = "Invalid or missing Tavily API key. Check your TAVILY_API_KEY environment variable."
+            yield f"data: {json.dumps({'type': 'error', 'msg': msg})}\n\n"
 
     return Response(stream_with_context(generate()), mimetype="text/event-stream")
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port  = int(os.environ.get("PORT", 5000))
     debug = os.environ.get("FLASK_ENV") == "development"
     app.run(host="0.0.0.0", port=port, debug=debug)
