@@ -1,6 +1,8 @@
 import os
 import re
 import json
+import time
+import datetime
 from flask import Flask, render_template, request, Response, stream_with_context
 from tavily import TavilyClient
 
@@ -49,29 +51,8 @@ INSTITUTION_NAMES = {
 INSTITUTION_TYPE = {d: "university" for d in UNIVERSITIES}
 INSTITUTION_TYPE.update({d: "college" for d in COLLEGES})
 
-# ── Known program-listing pages (used for targeted extraction) ──────────────
-PROGRAM_PAGES = {
-    "sait.ca":               "https://www.sait.ca/programs-and-courses",
-    "nait.ca":               "https://www.nait.ca/programs",
-    "macewan.ca":            "https://www.macewan.ca/programs-and-courses/",
-    "mtroyal.ca":            "https://www.mtroyal.ca/ProgramsCourses/",
-    "ualberta.ca":           "https://www.ualberta.ca/programs/index.html",
-    "ucalgary.ca":           "https://www.ucalgary.ca/future-students/undergraduate/explore-programs",
-    "ulethbridge.ca":        "https://www.ulethbridge.ca/programs",
-    "bowvalleycollege.ca":   "https://bowvalleycollege.ca/programs-courses",
-    "reddeer.ca":            "https://www.reddeer.ca/programs-and-courses/",
-    "lethbridgecollege.ca":  "https://lethbridgecollege.ca/departments/programs-and-courses",
-    "norquest.ca":           "https://www.norquest.ca/programs-courses/",
-    "concordia.ab.ca":       "https://concordia.ab.ca/programs/",
-    "athabascau.ca":         "https://www.athabascau.ca/programs/",
-    "auarts.ca":             "https://www.auarts.ca/academics/programs",
-    "nwpolytech.ca":         "https://nwpolytech.ca/programs-courses/",
-}
-
-# ── Career → specific academic program terms ───────────────────────────────
-# Maps common career goals to the real program names used by Alberta institutions
+# ── Career → academic program term mapping ─────────────────────────────────
 CAREER_TERM_MAP = {
-    # Technology
     "software developer":      ["software development", "computer systems technology", "computing science", "software engineering technology"],
     "software engineer":       ["software engineering", "computing science", "computer engineering", "software development"],
     "web developer":           ["web development", "internet communications technology", "digital media", "web design and development"],
@@ -81,8 +62,6 @@ CAREER_TERM_MAP = {
     "game developer":          ["game development", "interactive digital media", "3D animation", "digital arts"],
     "ai developer":            ["artificial intelligence", "machine learning", "data science", "computing science"],
     "database administrator":  ["database administration", "information technology", "computer systems", "data management"],
-
-    # Health & Medical
     "nurse":                   ["nursing", "practical nurse", "BScN bachelor of science nursing", "registered nurse"],
     "registered nurse":        ["BScN nursing", "bachelor of science nursing", "registered nurse program"],
     "practical nurse":         ["practical nurse diploma", "PN program", "licensed practical nurse"],
@@ -94,8 +73,6 @@ CAREER_TERM_MAP = {
     "medical lab":             ["medical laboratory technology", "medical laboratory science", "MLT"],
     "radiologist":             ["medical radiologic technology", "diagnostic imaging", "radiography"],
     "health care aide":        ["health care aide", "continuing care assistant", "personal support worker"],
-
-    # Engineering
     "engineer":                ["engineering", "engineering technology", "applied science"],
     "civil engineer":          ["civil engineering", "civil engineering technology", "structural engineering"],
     "mechanical engineer":     ["mechanical engineering", "mechanical engineering technology", "mechatronics"],
@@ -103,63 +80,36 @@ CAREER_TERM_MAP = {
     "petroleum engineer":      ["petroleum engineering", "oil and gas", "chemical engineering", "energy"],
     "environmental engineer":  ["environmental engineering", "environmental technology", "environmental science"],
     "chemical engineer":       ["chemical engineering", "chemical technology", "process engineering"],
-    "aerospace engineer":      ["aerospace engineering", "avionics", "aviation", "aeronautical"],
-
-    # Trades
     "electrician":             ["electrical apprenticeship", "electrical technology", "industrial electrician", "power engineering"],
     "plumber":                 ["plumbing apprenticeship", "plumber journeyman", "pipefitting"],
     "welder":                  ["welding", "welding fabrication", "metal fabrication", "welding technology"],
     "carpenter":               ["carpentry", "construction", "building construction technology"],
-    "hvac":                    ["HVAC", "refrigeration and air conditioning", "building systems", "plumbing and heating"],
+    "hvac":                    ["HVAC", "refrigeration and air conditioning", "building systems"],
     "mechanic":                ["automotive service technology", "auto mechanic", "heavy equipment technology"],
-    "heavy equipment":         ["heavy equipment technology", "heavy equipment operator", "construction equipment"],
-
-    # Business & Finance
     "accountant":              ["accounting", "CPA", "bachelor of commerce", "financial management"],
-    "business analyst":        ["business analysis", "management information systems", "business administration", "commerce"],
+    "business analyst":        ["business analysis", "management information systems", "business administration"],
     "marketing":               ["marketing", "digital marketing", "advertising", "business marketing"],
-    "human resources":         ["human resources management", "HR management", "people management", "HRM"],
-    "project manager":         ["project management", "business administration", "management"],
-    "entrepreneur":            ["entrepreneurship", "business administration", "new venture", "small business"],
-
-    # Creative & Design
-    "graphic designer":        ["graphic design", "graphic communications", "visual communications", "digital design"],
-    "ux designer":             ["UX design", "user experience design", "interaction design", "digital design"],
+    "human resources":         ["human resources management", "HR management", "HRM"],
+    "graphic designer":        ["graphic design", "graphic communications", "visual communications"],
+    "ux designer":             ["UX design", "user experience design", "interaction design"],
     "animator":                ["animation", "3D animation", "motion graphics", "digital media arts"],
-    "photographer":            ["photography", "photographic arts", "visual arts", "media arts"],
-    "filmmaker":               ["film production", "digital video", "film studies", "media production"],
-    "interior designer":       ["interior design", "interior decorating", "architectural technology"],
-    "architect":               ["architecture", "architectural technology", "architectural design"],
-    "fashion designer":        ["fashion design", "fashion arts", "textile design"],
-
-    # Education & Social
     "teacher":                 ["education", "bachelor of education", "BEd", "teaching certificate"],
-    "early childhood":         ["early childhood education", "ECE", "child and youth care", "early learning"],
+    "early childhood":         ["early childhood education", "ECE", "child and youth care"],
     "social worker":           ["social work", "BSW bachelor of social work", "social sciences"],
     "psychologist":            ["psychology", "counselling", "mental health", "applied psychology"],
-    "counsellor":              ["counselling", "social work", "psychology", "addictions counselling"],
-
-    # Environment & Agriculture
     "environmental scientist": ["environmental science", "ecology", "environmental studies", "natural resources"],
     "biologist":               ["biology", "biological sciences", "life sciences", "ecology"],
-    "agriculturalist":         ["agriculture", "agribusiness", "agronomy", "animal science", "crop science"],
-    "veterinarian":            ["veterinary technology", "animal health technology", "pre-vet biology"],
-    "geologist":               ["geology", "earth sciences", "geophysics", "petroleum geology"],
-    "forest":                  ["forestry", "forest technology", "environmental resource science"],
-
-    # Hospitality & Tourism
-    "chef":                    ["culinary arts", "baking and pastry arts", "cook apprenticeship", "food service management"],
+    "agriculturalist":         ["agriculture", "agribusiness", "agronomy", "animal science"],
+    "veterinarian":            ["veterinary technology", "animal health technology"],
+    "chef":                    ["culinary arts", "baking and pastry arts", "cook apprenticeship"],
     "hotel manager":           ["hospitality management", "hotel management", "tourism management"],
-    "event planner":           ["event management", "hospitality", "tourism management"],
-
-    # Legal & Law Enforcement
     "police officer":          ["police studies", "law enforcement", "justice studies", "criminal justice"],
-    "lawyer":                  ["pre-law", "law", "legal studies", "political science", "criminology"],
-    "paralegal":               ["paralegal studies", "legal assistant", "law clerk"],
-
-    # Transport & Aviation
     "pilot":                   ["aviation", "flight training", "commercial pilot", "aeronautical"],
     "logistics":               ["supply chain management", "logistics", "transportation management"],
+    "filmmaker":               ["film production", "digital video", "film studies", "media production"],
+    "architect":               ["architecture", "architectural technology", "architectural design"],
+    "interior designer":       ["interior design", "interior decorating", "architectural technology"],
+    "photographer":            ["photography", "photographic arts", "visual arts", "media arts"],
 }
 
 
@@ -171,81 +121,45 @@ def get_client() -> TavilyClient:
 
 
 def career_to_terms(career: str) -> list[str]:
-    """
-    Map a career string to specific academic program terms used by Alberta institutions.
-    Falls back gracefully for unrecognised careers.
-    """
     career_lower = career.lower().strip()
-
-    # Exact match
     if career_lower in CAREER_TERM_MAP:
         return CAREER_TERM_MAP[career_lower]
-
-    # Partial match — find the closest key
     for key, terms in CAREER_TERM_MAP.items():
         if key in career_lower or career_lower in key:
             return terms
-
-    # Word-level match
     words = career_lower.split()
     for key, terms in CAREER_TERM_MAP.items():
-        if any(w in key for w in words):
+        if any(w in key for w in words if len(w) > 3):
             return terms
-
-    # No match — build generic academic terms from the career string
-    base = career.strip()
-    return [
-        base,
-        f"{base} program",
-        f"{base} technology",
-        f"{base} diploma",
-        f"bachelor of {base}",
-        f"applied {base}",
-    ]
+    return [career, f"{career} program", f"{career} technology", f"{career} diploma", f"bachelor of {career}"]
 
 
 def _is_program_page(url: str, title: str) -> bool:
-    """Return True if the URL/title looks like an actual program page, not a home/about page."""
-    url_lower   = url.lower()
-    title_lower = title.lower()
-
-    # Skip obvious non-program pages
-    skip_patterns = [
-        "/news", "/events", "/about", "/contact", "/faculty",
-        "/research", "/campus", "/student-services", "/jobs",
-        "/library", "/athletics", "login", "apply-now",
-    ]
-    if any(p in url_lower for p in skip_patterns):
+    url_lower, title_lower = url.lower(), title.lower()
+    skip = ["/news", "/events", "/about", "/contact", "/faculty", "/research",
+            "/campus", "/student-services", "/jobs", "/library", "/athletics", "login"]
+    if any(p in url_lower for p in skip):
         return False
-
-    # Prefer pages with program-like path segments
-    good_url_segments = [
-        "program", "course", "diploma", "certificate", "degree",
-        "bachelor", "major", "credential", "study",
-    ]
-    good_title_words = [
-        "diploma", "certificate", "degree", "bachelor", "program",
-        "technology", "technician", "science", "engineering", "management",
-        "arts", "design", "nursing", "education", "apprenticeship",
-    ]
-    url_ok   = any(s in url_lower   for s in good_url_segments)
-    title_ok = any(w in title_lower for w in good_title_words)
-    return url_ok or title_ok
+    good_url  = ["program", "course", "diploma", "certificate", "degree", "bachelor", "major", "credential", "study"]
+    good_title = ["diploma", "certificate", "degree", "bachelor", "program", "technology", "technician",
+                  "science", "engineering", "management", "arts", "design", "nursing", "education", "apprenticeship"]
+    return any(s in url_lower for s in good_url) or any(w in title_lower for w in good_title)
 
 
-def _parse_result(r: dict) -> dict | None:
-    """Parse a single Tavily result into a clean course dict."""
+def _parse_result(r: dict, matched_term: str = "", search_query: str = "") -> dict | None:
     url     = (r.get("url") or "").strip()
     title   = (r.get("title") or "").strip()
     content = (r.get("content") or "").strip()
+    score   = r.get("score", 0)
 
     if not title or len(content) < 30:
         return None
     if not _is_program_page(url, title):
         return None
 
-    # Clean up title — remove institution name suffix (e.g. "| SAIT")
-    title = re.sub(r'\s*[|\-–—]\s*(SAIT|NAIT|MacEwan|U of A|UCalgary|.*University|.*College).*$', '', title, flags=re.I).strip()
+    # Strip institution suffix from title
+    title = re.sub(r'\s*[|\-–—]\s*(SAIT|NAIT|MacEwan|U of A|UCalgary|.*University|.*College|.*Institute).*$',
+                   '', title, flags=re.I).strip()
     if not title:
         return None
 
@@ -273,77 +187,146 @@ def _parse_result(r: dict) -> dict | None:
         duration = f"{n} {unit}{'s' if float(n) != 1 else ''}"
 
     domain = next((d for d in INSTITUTION_NAMES if d in url), None)
+    inst   = INSTITUTION_NAMES.get(domain, "Alberta Institution")
+    i_type = INSTITUTION_TYPE.get(domain, "college")
+
+    # ── Transparency: build per-card reasoning ──────────────────────────────
+    reasons = []
+    if matched_term:
+        reasons.append(f"Matched academic search term: \"{matched_term}\"")
+    if credential != "Program":
+        reasons.append(f"Credential type detected from page content: {credential}")
+    if duration:
+        reasons.append(f"Duration extracted from program description: {duration}")
+    reasons.append(f"Source: {inst} official website ({domain or url})")
+    reasons.append(f"Search query used: \"{search_query}\"")
+    relevance = min(100, int((score or 0.5) * 100)) if score else None
+    if relevance:
+        reasons.append(f"Relevance score from search engine: {relevance}%")
+
     return {
         "name":             title,
         "desc":             desc[:320],
         "credential":       credential,
         "duration":         duration,
         "url":              url,
-        "institution":      INSTITUTION_NAMES.get(domain, "Alberta Institution"),
-        "institution_type": INSTITUTION_TYPE.get(domain, "college"),
+        "institution":      inst,
+        "institution_type": i_type,
         "domain":           domain or "",
+        # ── Transparency fields ────────────────────────────────────────────
+        "matched_term":     matched_term,
+        "search_query":     search_query,
+        "relevance_score":  relevance,
+        "reasons":          reasons,
+        "source_url":       url,
+        "retrieved_at":     datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
     }
 
 
-def search_programs(career: str, domains: list[str]) -> list[dict]:
-    """
-    Run multiple targeted Tavily searches for a career across a set of institution domains.
-    Uses academic program terms so results are actual course names, not generic pages.
-    """
-    client = get_client()
-    terms  = career_to_terms(career)
-    all_results = []
+def search_programs(career: str, domains: list[str], audit: list) -> list[dict]:
+    """Search programs with full audit trail recording every decision."""
+    client  = get_client()
+    terms   = career_to_terms(career)
+    all_raw = []
 
-    # Strategy 1: search top 3 academic terms against the institution group
+    audit.append({
+        "step":    "career_interpretation",
+        "input":   career,
+        "output":  terms,
+        "reason":  f"Mapped '{career}' to {len(terms)} academic program terms using Alberta post-secondary terminology database.",
+    })
+
+    # Strategy 1: targeted term-by-term searches
     for term in terms[:3]:
+        query = f'"{term}" program course Alberta'
         try:
-            res = client.search(
-                query=f'"{term}" program course Alberta',
-                include_domains=domains,
-                max_results=5,
-                search_depth="advanced",
-            )
-            all_results.extend(res.get("results", []))
-        except Exception:
-            pass
+            t0  = time.time()
+            res = client.search(query=query, include_domains=domains, max_results=5, search_depth="advanced")
+            ms  = int((time.time() - t0) * 1000)
+            raw = res.get("results", [])
+            audit.append({
+                "step":          "targeted_search",
+                "query":         query,
+                "domains_count": len(domains),
+                "raw_results":   len(raw),
+                "duration_ms":   ms,
+                "reason":        f"Searched for academic term '{term}' within {len(domains)} institution domains.",
+            })
+            for r in raw:
+                r["_matched_term"]   = term
+                r["_search_query"]   = query
+            all_raw.extend(raw)
+        except Exception as e:
+            audit.append({"step": "targeted_search_error", "query": query, "error": str(e)})
 
-    # Strategy 2: broader search with original career title (catches edge cases)
+    # Strategy 2: broader fallback
+    query = f"{career} diploma degree certificate program Alberta"
     try:
-        res = client.search(
-            query=f'{career} diploma degree certificate program Alberta',
-            include_domains=domains,
-            max_results=5,
-            search_depth="advanced",
-        )
-        all_results.extend(res.get("results", []))
-    except Exception:
-        pass
+        t0  = time.time()
+        res = client.search(query=query, include_domains=domains, max_results=5, search_depth="advanced")
+        ms  = int((time.time() - t0) * 1000)
+        raw = res.get("results", [])
+        audit.append({
+            "step":          "broad_fallback_search",
+            "query":         query,
+            "domains_count": len(domains),
+            "raw_results":   len(raw),
+            "duration_ms":   ms,
+            "reason":        "Broad fallback search using original career label to catch programs not indexed under academic terms.",
+        })
+        for r in raw:
+            r["_matched_term"]   = career
+            r["_search_query"]   = query
+        all_raw.extend(raw)
+    except Exception as e:
+        audit.append({"step": "broad_fallback_error", "query": query, "error": str(e)})
 
-    # Parse, filter, deduplicate
+    # Parse and filter
     seen, courses = set(), []
-    for r in all_results:
+    skipped_non_program, skipped_duplicate = 0, 0
+    for r in all_raw:
         url = (r.get("url") or "").strip()
         if url in seen:
+            skipped_duplicate += 1
             continue
         seen.add(url)
-        parsed = _parse_result(r)
+        parsed = _parse_result(r, r.get("_matched_term", ""), r.get("_search_query", ""))
         if parsed:
             courses.append(parsed)
+        else:
+            skipped_non_program += 1
 
+    audit.append({
+        "step":                 "filtering",
+        "total_raw":            len(all_raw),
+        "duplicates_removed":   skipped_duplicate,
+        "non_program_filtered": skipped_non_program,
+        "final_count":          len(courses),
+        "reason":               ("Filtered out: duplicate URLs, non-program pages (news, about, events, contact), "
+                                 "and pages missing program-specific keywords in title or URL."),
+    })
     return courses
 
 
-def get_market_insight(career: str) -> str:
+def get_market_insight(career: str, audit: list) -> str:
+    sources = ["alis.alberta.ca", "jobbank.gc.ca", "statcan.gc.ca"]
+    query   = f"{career} average salary job demand Alberta 2024 2025"
     try:
-        res = get_client().search(
-            query=f"{career} average salary job demand Alberta 2024 2025",
-            include_domains=["alis.alberta.ca", "jobbank.gc.ca", "statcan.gc.ca", "indeed.com"],
-            max_results=2,
-            search_depth="basic",
-        )
+        t0  = time.time()
+        res = get_client().search(query=query, include_domains=sources, max_results=2, search_depth="basic")
+        ms  = int((time.time() - t0) * 1000)
         snippets = [r.get("content", "")[:280] for r in res.get("results", []) if r.get("content")]
+        audit.append({
+            "step":        "market_insight_search",
+            "query":       query,
+            "sources":     sources,
+            "found":       len(snippets) > 0,
+            "duration_ms": ms,
+            "reason":      "Searched government labour-market sources (ALIS, Job Bank, Statistics Canada) for salary and demand data.",
+        })
         return snippets[0] if snippets else ""
-    except Exception:
+    except Exception as e:
+        audit.append({"step": "market_insight_error", "error": str(e)})
         return ""
 
 
@@ -352,54 +335,68 @@ def build_pathway(career: str, courses: list) -> list:
     inst  = courses[0]["institution"] if courses else "your chosen institution"
     return [
         {"step": "Confirm your prerequisites",
-         "detail": "Check exact admission requirements for your chosen program. Most need "
-                   "Grade 12 English and Math (Pure/Applied 20-1 or equivalent)."},
+         "detail": "Check exact admission requirements for your chosen program. Most need Grade 12 English and Math (Pure/Applied 20-1 or equivalent)."},
         {"step": "Apply through ApplyAlberta",
-         "detail": "Create a free account at applyalberta.ca — Alberta's single application portal. "
-                   "Apply before early-bird deadlines (usually February–March)."},
+         "detail": "Create a free account at applyalberta.ca — Alberta's single application portal. Apply before early-bird deadlines (usually February–March)."},
         {"step": f"Enrol in '{first}' at {inst}",
-         "detail": "Attend orientation, connect with your student advisor, and ask about "
-                   "co-op or practicum opportunities in your first week."},
+         "detail": "Attend orientation, connect with your student advisor, and ask about co-op or practicum opportunities in your first week."},
         {"step": "Complete work-integrated learning",
-         "detail": "Most Alberta programs include a mandatory practicum or co-op term — "
-                   "many students receive their first job offer directly from their placement."},
+         "detail": "Most Alberta programs include a mandatory practicum or co-op term — many students receive their first job offer directly from their placement."},
         {"step": f"Launch your career as a {career}",
-         "detail": "Graduate, write any required certification exams (Red Seal, CPNRE, APEGA, etc.), "
-                   "and register with the relevant Alberta professional body."},
+         "detail": "Graduate, write any required certification exams (Red Seal, CPNRE, APEGA, etc.), and register with the relevant Alberta professional body."},
     ]
 
 
-# ── Discovery helpers ───────────────────────────────────────────────────────
+def build_governance(career: str, terms: list, audit: list, univ_count: int, coll_count: int) -> dict:
+    """Build the AI governance and transparency metadata block."""
+    return {
+        "system_version":    "Alberta Career Pathways v2.0",
+        "model_type":        "Rule-based search + live web retrieval (no generative AI used for course matching)",
+        "data_source":       "Live searches of official Alberta post-secondary institution websites via Tavily Search API",
+        "search_timestamp":  datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        "career_input":      career,
+        "terms_used":        terms,
+        "institutions_searched": len(UNIVERSITIES) + len(COLLEGES),
+        "results_found":     univ_count + coll_count,
+        "audit_steps":       len(audit),
+        "limitations": [
+            "Results depend on content indexed on institution websites at time of search.",
+            "Program availability, tuition, and admission requirements change — always verify directly with the institution.",
+            "Not all programs from all 26 institutions may appear; some pages may not be indexed.",
+            "Career-to-term mapping covers common careers; niche roles may return broader results.",
+            "Labour market data is sourced from public government databases and may not reflect current conditions.",
+            "This tool is for discovery only — it is not a substitute for official academic advising.",
+        ],
+        "bias_disclosures": [
+            "Search results are ranked by the Tavily search engine's relevance algorithm, which may favour larger institutions with more web content.",
+            "Programs with more detailed web pages are more likely to appear than those with minimal online presence.",
+            "Career term mapping was built from Alberta post-secondary catalogues and may reflect historical program naming conventions.",
+        ],
+        "human_oversight": "All recommendations should be reviewed with a qualified academic advisor before making enrollment decisions.",
+        "data_privacy":    "No personal student data is stored. Career queries are used solely for the current session search.",
+        "feedback_prompt": "If a result is incorrect or misleading, please report it so the career term mapping can be improved.",
+        "full_audit":      audit,
+    }
+
 
 def discovery_query(method: str, data: dict) -> tuple[str, str]:
-    """Return (career_query, display_label) for each discovery method."""
     if method == "shadow":
-        jobs  = [data.get(f"job{i}", "") for i in range(1, 6)]
-        jobs  = [j for j in jobs if j]
-        label = jobs[0] if jobs else "your dream job"
-        # Combine first 3 jobs into a search
-        return " OR ".join(jobs[:3]), label
-
+        jobs  = [data.get(f"job{i}", "") for i in range(1, 6) if data.get(f"job{i}", "")]
+        return " OR ".join(jobs[:3]), jobs[0] if jobs else "your dream job"
     if method == "unjob":
-        title = data.get("unjob_title", "")
-        return title, title or "your chosen role"
-
+        t = data.get("unjob_title", "")
+        return t, t or "your chosen role"
     if method == "audit":
-        subjects = [data.get(f"subject{i}", "") for i in range(1, 4)]
-        subjects = [s for s in subjects if s]
-        label    = " & ".join(subjects[:2])
-        return " ".join(subjects), label
-
+        subs = [data.get(f"subject{i}", "") for i in range(1, 4) if data.get(f"subject{i}", "")]
+        return " ".join(subs), " & ".join(subs[:2])
     if method == "problem":
-        problem = data.get("problem", "")
-        return problem, f"solving: {problem}"
-
+        p = data.get("problem", "")
+        return p, f"solving: {p}"
     if method == "podcast":
-        industry = data.get("industry", "")
-        return industry, f"a career in {industry}"
-
-    career = data.get("career", "")
-    return career, career
+        i = data.get("industry", "")
+        return i, f"a career in {i}"
+    c = data.get("career", "")
+    return c, c
 
 
 @app.route("/")
@@ -409,34 +406,54 @@ def index():
 
 def _stream(career: str, label: str, method: str = "direct"):
     def generate():
+        audit = []
+        audit.append({
+            "step":   "session_start",
+            "method": method,
+            "input":  career,
+            "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+            "reason": f"Student initiated a '{method}' discovery search for: '{career}'.",
+        })
+
         try:
             yield f"data: {json.dumps({'type':'status','msg':'Searching universities\u2026'})}\n\n"
-            university_courses = search_programs(career, UNIVERSITIES)
+            univ_courses = search_programs(career, UNIVERSITIES, audit)
 
             yield f"data: {json.dumps({'type':'status','msg':'Searching colleges \u0026 polytechnics\u2026'})}\n\n"
-            college_courses = search_programs(career, COLLEGES)
+            coll_courses = search_programs(career, COLLEGES, audit)
 
             yield f"data: {json.dumps({'type':'status','msg':'Gathering market insights\u2026'})}\n\n"
-            insight  = get_market_insight(career)
-            all_c    = university_courses + college_courses
-            pathway  = build_pathway(label, all_c)
+            terms   = career_to_terms(career)
+            insight = get_market_insight(career, audit)
 
             yield f"data: {json.dumps({'type':'status','msg':'Building your pathway\u2026'})}\n\n"
+            all_c    = univ_courses + coll_courses
+            pathway  = build_pathway(label, all_c)
+            governance = build_governance(career, terms, audit, len(univ_courses), len(coll_courses))
+
+            audit.append({
+                "step":   "session_complete",
+                "university_results": len(univ_courses),
+                "college_results":    len(coll_courses),
+                "reason": "Search complete. Results filtered, deduplicated, and structured for display.",
+            })
 
             payload = {
                 "career":       label,
                 "method":       method,
                 "summary":      (f"Here are specific Alberta post-secondary programs that lead to a career in "
-                                 f"{label}. Results are sourced live from institution websites across the province."),
+                                 f"{label}. Results sourced live from official institution websites."),
                 "insight":      insight,
-                "universities": university_courses,
-                "colleges":     college_courses,
+                "universities": univ_courses,
+                "colleges":     coll_courses,
                 "pathway":      pathway,
+                "governance":   governance,
             }
             yield f"data: {json.dumps({'type':'result','data':payload})}\n\n"
 
         except Exception as e:
             msg = str(e)
+            audit.append({"step": "error", "message": msg})
             if "401" in msg or "TAVILY" in msg:
                 msg = "Invalid or missing Tavily API key. Check your TAVILY_API_KEY environment variable."
             yield f"data: {json.dumps({'type':'error','msg':msg})}\n\n"
