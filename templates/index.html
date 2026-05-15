@@ -15,59 +15,57 @@
 <section class="hero">
   <div class="badge">🎓 Alberta Career Pathways</div>
   <h1>Discover your path to a<br><em>career you'll love</em></h1>
-  <p>Not sure what to study? Use one of five creative discovery methods — or search directly — to find programs across all 26 Alberta post-secondary institutions.</p>
+  <p>Five creative discovery methods to find your ideal post-secondary program across all 26 Alberta institutions — with full transparency on every recommendation.</p>
   <div class="hero-stats">
-    <div class="stat"><span>26</span> Institutions</div>
+    <div class="stat"><span>26</span>Institutions</div>
     <div class="stat-div"></div>
-    <div class="stat"><span>5</span> Discovery Methods</div>
+    <div class="stat"><span>5</span>Discovery Methods</div>
     <div class="stat-div"></div>
-    <div class="stat"><span>100%</span> Alberta-Focused</div>
+    <div class="stat"><span>100%</span>Transparent</div>
   </div>
 </section>
+
+<!-- ── AI GOVERNANCE NOTICE BANNER ── -->
+<div class="gov-notice-bar">
+  <span class="gov-dot"></span>
+  <span><strong>AI Governance:</strong> This tool uses live web search — not generative AI — to find real programs. Every recommendation is traceable to its source. No personal data is stored.</span>
+  <button class="gov-bar-link" onclick="openGovModal()">View full governance statement →</button>
+</div>
 
 <!-- ── MAIN ── -->
 <main class="main" id="main-content">
 
-  <!-- ══ DISCOVERY HUB (default view) ══ -->
+  <!-- ══ HUB ══ -->
   <div id="hub-state">
     <div class="hub-header">
       <h2>How would you like to explore?</h2>
-      <p>Choose a discovery method below, or skip straight to searching by career.</p>
+      <p>Choose a discovery method below, or jump straight to a career search.</p>
     </div>
-
     <div class="method-grid">
-
-      <!-- 1. Shadow Lottery -->
       <button class="method-card" onclick="openMethod('shadow')">
         <div class="method-icon">🔭</div>
         <div class="method-body">
           <h3>The Shadowing Lottery</h3>
-          <p>List your dream jobs — no matter how unrealistic — and we'll find programs that align with those worlds.</p>
+          <p>List your dream jobs — no matter how unrealistic — and we'll find programs that open those doors.</p>
           <span class="method-tag">Dream big</span>
         </div>
       </button>
-
-      <!-- 2. Un-Job Posting -->
       <button class="method-card" onclick="openMethod('unjob')">
         <div class="method-icon">🦄</div>
         <div class="method-body">
           <h3>The "Un-Job" Posting</h3>
-          <p>Found a job title that made you say "I didn't know that was a job"? Let's find the degree behind it.</p>
+          <p>Found a job title that made you say "I didn't know that was a job"? Find the degree behind it.</p>
           <span class="method-tag">Discover the unusual</span>
         </div>
       </button>
-
-      <!-- 3. Audit Experiment -->
       <button class="method-card" onclick="openMethod('audit')">
         <div class="method-icon">🧪</div>
         <div class="method-body">
           <h3>The Audit Experiment</h3>
-          <p>Pick three completely unrelated subjects you're curious about — forensics, animation, philosophy — and find programs that spark that curiosity.</p>
+          <p>Pick three completely unrelated subjects — forensics, animation, philosophy — and find programs where those sparks collide.</p>
           <span class="method-tag">Curiosity-first</span>
         </div>
       </button>
-
-      <!-- 4. Problem Mapping -->
       <button class="method-card" onclick="openMethod('problem')">
         <div class="method-icon">🌍</div>
         <div class="method-body">
@@ -76,63 +74,41 @@
           <span class="method-tag">Change the world</span>
         </div>
       </button>
-
-      <!-- 5. Podcast Project -->
       <button class="method-card" onclick="openMethod('podcast')">
         <div class="method-icon">🎙️</div>
         <div class="method-body">
           <h3>The Insider Podcast</h3>
-          <p>Imagine interviewing someone in a field that fascinates you. Tell us the industry and we'll show you how to get there.</p>
+          <p>Imagine interviewing someone in a fascinating field. Tell us the industry and we'll show you how to get there.</p>
           <span class="method-tag">Insider insight</span>
         </div>
       </button>
-
-      <!-- 6. Direct Search -->
       <button class="method-card method-card--direct" onclick="openMethod('direct')">
         <div class="method-icon">🔍</div>
         <div class="method-body">
           <h3>Direct Career Search</h3>
-          <p>Already know what you want? Search by career goal and get matched programs from all 26 Alberta institutions instantly.</p>
+          <p>Already know what you want? Search by career goal and get matched programs from all 26 institutions instantly.</p>
           <span class="method-tag method-tag--teal">Quick search</span>
         </div>
       </button>
-
     </div>
   </div>
 
-  <!-- ══ DISCOVERY FORMS (one per method) ══ -->
+  <!-- ══ DISCOVERY FORMS ══ -->
   <div id="form-state" class="hidden">
     <button class="back-btn" onclick="goBack()">← Back to discovery methods</button>
 
-    <!-- Shadow Lottery -->
+    <!-- Shadow -->
     <div id="form-shadow" class="discovery-form hidden">
-      <div class="form-header">
-        <div class="form-icon">🔭</div>
-        <h2>The Shadowing Lottery</h2>
-        <p>List up to 5 dream jobs — the wilder the better. We'll find Alberta programs that open doors to those worlds.</p>
+      <div class="form-header"><div class="form-icon">🔭</div>
+        <div><h2>The Shadowing Lottery</h2><p>List up to 5 dream jobs — the wilder the better.</p></div>
       </div>
       <div class="form-fields">
-        <div class="field-group">
-          <label>Dream job #1 <span class="req">*</span></label>
-          <input id="shadow-job1" type="text" placeholder="e.g. Astronaut, Video game designer, Marine biologist" />
-        </div>
-        <div class="field-group">
-          <label>Dream job #2</label>
-          <input id="shadow-job2" type="text" placeholder="e.g. Documentary filmmaker" />
-        </div>
-        <div class="field-group">
-          <label>Dream job #3</label>
-          <input id="shadow-job3" type="text" placeholder="e.g. Forensic scientist" />
-        </div>
+        <div class="field-group"><label>Dream job #1 <span class="req">*</span></label><input id="shadow-job1" type="text" placeholder="e.g. Astronaut, Marine biologist, Game designer" /></div>
+        <div class="field-group"><label>Dream job #2</label><input id="shadow-job2" type="text" placeholder="e.g. Documentary filmmaker" /></div>
+        <div class="field-group"><label>Dream job #3</label><input id="shadow-job3" type="text" placeholder="e.g. Forensic scientist" /></div>
         <div class="field-row">
-          <div class="field-group">
-            <label>Dream job #4</label>
-            <input id="shadow-job4" type="text" placeholder="Optional" />
-          </div>
-          <div class="field-group">
-            <label>Dream job #5</label>
-            <input id="shadow-job5" type="text" placeholder="Optional" />
-          </div>
+          <div class="field-group"><label>Dream job #4</label><input id="shadow-job4" type="text" placeholder="Optional" /></div>
+          <div class="field-group"><label>Dream job #5</label><input id="shadow-job5" type="text" placeholder="Optional" /></div>
         </div>
         <button class="submit-btn" onclick="submitDiscovery('shadow')">Find Matching Programs →</button>
       </div>
@@ -140,46 +116,26 @@
 
     <!-- Un-Job -->
     <div id="form-unjob" class="discovery-form hidden">
-      <div class="form-header">
-        <div class="form-icon">🦄</div>
-        <h2>The "Un-Job" Posting</h2>
-        <p>Browse LinkedIn or Indeed for unconventional roles — "Sustainability Evangelist," "Experience Designer," "Taste Tester." Paste one that excites you.</p>
+      <div class="form-header"><div class="form-icon">🦄</div>
+        <div><h2>The "Un-Job" Posting</h2><p>Paste an unusual job title that excites you.</p></div>
       </div>
       <div class="form-fields">
-        <div class="field-group">
-          <label>The job title that excited you <span class="req">*</span></label>
-          <input id="unjob-title" type="text" placeholder="e.g. Sustainability Evangelist, UX Researcher, Esports Coach" />
-        </div>
-        <div class="field-group">
-          <label>What about it excites you? <span class="hint">(optional — helps refine results)</span></label>
-          <input id="unjob-why" type="text" placeholder="e.g. Mixing creativity with data" />
-        </div>
+        <div class="field-group"><label>The job title <span class="req">*</span></label><input id="unjob-title" type="text" placeholder="e.g. Sustainability Evangelist, Experience Designer, Esports Coach" /></div>
+        <div class="field-group"><label>What excites you about it? <span class="hint">(optional)</span></label><input id="unjob-why" type="text" placeholder="e.g. Mixing creativity with data" /></div>
         <button class="submit-btn" onclick="submitDiscovery('unjob')">Find the Degree Behind It →</button>
       </div>
     </div>
 
-    <!-- Audit Experiment -->
+    <!-- Audit -->
     <div id="form-audit" class="discovery-form hidden">
-      <div class="form-header">
-        <div class="form-icon">🧪</div>
-        <h2>The Audit Experiment</h2>
-        <p>Pick three completely unrelated subjects you're curious about. We'll find programs where those curiosities collide.</p>
+      <div class="form-header"><div class="form-icon">🧪</div>
+        <div><h2>The Audit Experiment</h2><p>Pick three unrelated subjects that spark genuine curiosity.</p></div>
       </div>
       <div class="form-fields">
-        <div class="field-group">
-          <label>Subject 1 <span class="req">*</span></label>
-          <input id="audit-s1" type="text" placeholder="e.g. Forensics" />
-        </div>
-        <div class="field-group">
-          <label>Subject 2 <span class="req">*</span></label>
-          <input id="audit-s2" type="text" placeholder="e.g. Animation" />
-        </div>
-        <div class="field-group">
-          <label>Subject 3 <span class="req">*</span></label>
-          <input id="audit-s3" type="text" placeholder="e.g. Philosophy" />
-        </div>
-        <div class="field-group">
-          <label>Do you prefer hands-on or analytical work?</label>
+        <div class="field-group"><label>Subject 1 <span class="req">*</span></label><input id="audit-s1" type="text" placeholder="e.g. Forensics" /></div>
+        <div class="field-group"><label>Subject 2 <span class="req">*</span></label><input id="audit-s2" type="text" placeholder="e.g. Animation" /></div>
+        <div class="field-group"><label>Subject 3 <span class="req">*</span></label><input id="audit-s3" type="text" placeholder="e.g. Philosophy" /></div>
+        <div class="field-group"><label>Do you prefer?</label>
           <div class="toggle-group">
             <button class="toggle-btn active" id="audit-pref-hands" onclick="setPref('audit','hands')">🔨 Hands-on / Creating</button>
             <button class="toggle-btn" id="audit-pref-analytical" onclick="setPref('audit','analytical')">📊 Problem-solving / Analyzing</button>
@@ -189,20 +145,15 @@
       </div>
     </div>
 
-    <!-- Problem Mapping -->
+    <!-- Problem -->
     <div id="form-problem" class="discovery-form hidden">
-      <div class="form-header">
-        <div class="form-icon">🌍</div>
-        <h2>Problem-Mapping</h2>
-        <p>Instead of "What do you want to be?" — ask yourself "What world problem annoys me most?"</p>
+      <div class="form-header"><div class="form-icon">🌍</div>
+        <div><h2>Problem-Mapping</h2><p>What world problem bothers you most?</p></div>
       </div>
       <div class="form-fields">
-        <div class="field-group">
-          <label>What world problem bothers you most? <span class="req">*</span></label>
-          <input id="problem-input" type="text" placeholder="e.g. Ocean plastic, bad city transit, food waste, mental health stigma" />
-        </div>
+        <div class="field-group"><label>The problem <span class="req">*</span></label><input id="problem-input" type="text" placeholder="e.g. Ocean plastic, bad city transit, food waste" /></div>
         <div class="problem-examples">
-          <p>Not sure? Try one of these:</p>
+          <p>Not sure? Try one:</p>
           <div class="example-pills">
             <button onclick="setExample('problem-input','Ocean plastic pollution')">🌊 Ocean plastic</button>
             <button onclick="setExample('problem-input','Poor city public transit')">🚌 City transit</button>
@@ -216,20 +167,14 @@
       </div>
     </div>
 
-    <!-- Podcast Project -->
+    <!-- Podcast -->
     <div id="form-podcast" class="discovery-form hidden">
-      <div class="form-header">
-        <div class="form-icon">🎙️</div>
-        <h2>The Insider Podcast</h2>
-        <p>Imagine you're creating a podcast. You can interview anyone in any industry. Who would you call?</p>
+      <div class="form-header"><div class="form-icon">🎙️</div>
+        <div><h2>The Insider Podcast</h2><p>What industry would your dream podcast cover?</p></div>
       </div>
       <div class="form-fields">
-        <div class="field-group">
-          <label>What industry or field would you cover? <span class="req">*</span></label>
-          <input id="podcast-industry" type="text" placeholder="e.g. Video game development, Environmental consulting, Sports medicine" />
-        </div>
-        <div class="field-group">
-          <label>What credential are you looking for?</label>
+        <div class="field-group"><label>Industry or field <span class="req">*</span></label><input id="podcast-industry" type="text" placeholder="e.g. Video game development, Sports medicine, Environmental consulting" /></div>
+        <div class="field-group"><label>Credential preference</label>
           <div class="toggle-group">
             <button class="toggle-btn active" id="pod-cred-any"   onclick="setCredPref('any')">🎯 Any</button>
             <button class="toggle-btn"        id="pod-cred-cert"  onclick="setCredPref('cert')">📜 Certificate / Diploma</button>
@@ -240,29 +185,21 @@
       </div>
     </div>
 
-    <!-- Direct Search -->
+    <!-- Direct -->
     <div id="form-direct" class="discovery-form hidden">
-      <div class="form-header">
-        <div class="form-icon">🔍</div>
-        <h2>Direct Career Search</h2>
-        <p>Know exactly what you want? Search across all 26 Alberta institutions at once.</p>
+      <div class="form-header"><div class="form-icon">🔍</div>
+        <div><h2>Direct Career Search</h2><p>Know what you want? Search all 26 Alberta institutions at once.</p></div>
       </div>
       <div class="form-fields">
-        <div class="field-group">
-          <label>Your career goal <span class="req">*</span></label>
-          <input id="direct-career" type="text" placeholder="e.g. Software developer, Registered nurse, Electrician" />
-        </div>
-        <div class="quick-suggestions">
-          <p>Popular searches:</p>
+        <div class="field-group"><label>Career goal <span class="req">*</span></label><input id="direct-career" type="text" placeholder="e.g. Software developer, Registered nurse, Electrician" /></div>
+        <div class="quick-suggestions"><p>Popular searches:</p>
           <div class="example-pills">
             <button onclick="setExample('direct-career','Software developer')">💻 Software developer</button>
             <button onclick="setExample('direct-career','Registered nurse')">🏥 Registered nurse</button>
-            <button onclick="setExample('direct-career','Environmental scientist')">🌿 Environmental scientist</button>
-            <button onclick="setExample('direct-career','Data scientist')">📊 Data scientist</button>
             <button onclick="setExample('direct-career','Electrician')">⚡ Electrician</button>
-            <button onclick="setExample('direct-career','Petroleum engineer')">🛢️ Petroleum engineer</button>
+            <button onclick="setExample('direct-career','Data scientist')">📊 Data scientist</button>
             <button onclick="setExample('direct-career','Graphic designer')">🎨 Graphic designer</button>
-            <button onclick="setExample('direct-career','Business analyst')">📈 Business analyst</button>
+            <button onclick="setExample('direct-career','Petroleum engineer')">🛢️ Petroleum engineer</button>
           </div>
         </div>
         <button class="submit-btn" onclick="submitDiscovery('direct')">Find Programs Across Alberta →</button>
@@ -273,40 +210,51 @@
   <!-- ══ LOADING ══ -->
   <div id="loading-state" class="loading-wrap hidden" aria-live="polite">
     <div class="spinner"></div>
-    <h3 id="loading-title">Finding your pathway…</h3>
-    <p>Searching all 26 Alberta institutions in real time</p>
+    <h3>Finding programs for <em id="loading-career"></em></h3>
+    <p>Searching official institution websites in real time</p>
     <div class="step-pills">
-      <span class="step-pill step-active" id="step-0">Searching universities…</span>
-      <span class="step-pill step-pending" id="step-1">Gathering market insights…</span>
-      <span class="step-pill step-pending" id="step-2">Building your pathway…</span>
+      <span class="step-pill step-active"  id="step-0">Searching universities…</span>
+      <span class="step-pill step-pending" id="step-1">Searching colleges…</span>
+      <span class="step-pill step-pending" id="step-2">Gathering market insights…</span>
+      <span class="step-pill step-pending" id="step-3">Building your pathway…</span>
     </div>
   </div>
 
   <!-- ══ ERROR ══ -->
   <div id="error-state" class="hidden" role="alert">
-    <div class="error-box">
-      <p class="error-title">Search failed</p>
-      <p id="error-msg"></p>
-    </div>
-    <div style="text-align:center;margin-top:20px">
-      <button class="btn-outline" onclick="resetToHub()">← Try again</button>
-    </div>
+    <div class="error-box"><p class="error-title">Search failed</p><p id="error-msg"></p></div>
+    <div style="text-align:center;margin-top:20px"><button class="btn-outline" onclick="resetToHub()">← Try again</button></div>
   </div>
 
   <!-- ══ RESULTS ══ -->
   <div id="results-state" class="hidden">
+
     <div class="results-header">
       <div id="method-badge" class="method-result-badge"></div>
       <h2 id="results-title"></h2>
       <p id="results-summary"></p>
     </div>
 
+    <!-- Transparency summary bar -->
+    <div id="transparency-bar" class="transparency-bar hidden">
+      <div class="trans-bar-inner">
+        <span class="trans-icon">🔍</span>
+        <div class="trans-text">
+          <strong>How we found these results</strong>
+          <span id="trans-summary-text"></span>
+        </div>
+        <button class="trans-expand-btn" onclick="toggleTransparency()">View full audit trail ↓</button>
+      </div>
+      <!-- Expandable audit trail -->
+      <div id="audit-trail" class="audit-trail hidden"></div>
+    </div>
+
     <div id="insight-box" class="insight-box hidden">
-      <h4>🌾 Alberta Labour Market Insight</h4>
+      <h4>🌾 Alberta Labour Market Insight <span class="source-tag">Source: ALIS / Job Bank / Statistics Canada</span></h4>
       <p id="insight-text"></p>
     </div>
 
-    <!-- Tab toggle -->
+    <!-- Tabs -->
     <div class="tab-bar">
       <button class="tab-btn active" id="tab-universities" onclick="switchTab('universities')">
         🏛️ Universities <span id="univ-count" class="count-badge"></span>
@@ -319,29 +267,54 @@
     <div id="tab-content-universities" class="courses-grid"></div>
     <div id="tab-content-colleges"     class="courses-grid hidden"></div>
 
+    <!-- Pathway -->
     <div id="pathway-section" class="pathway-section hidden">
       <h3>Your Step-by-Step Pathway</h3>
       <div class="pathway-steps" id="pathway-steps"></div>
     </div>
 
+    <!-- Governance inline card -->
+    <div id="governance-card" class="governance-card hidden">
+      <div class="gov-card-header">
+        <span class="gov-shield">🛡️</span>
+        <div>
+          <h4>AI Governance &amp; Limitations</h4>
+          <p>Understand how this tool works and what it cannot do.</p>
+        </div>
+        <button class="gov-card-expand" onclick="openGovModal()">Full statement →</button>
+      </div>
+      <div class="gov-limitations" id="gov-limitations"></div>
+    </div>
+
     <div class="actions">
       <button class="btn-outline" onclick="resetToHub()">← Try another method</button>
-      <a class="btn-primary" href="https://applyalberta.ca" target="_blank" rel="noopener noreferrer">
-        Apply on ApplyAlberta →
-      </a>
+      <a class="btn-primary" href="https://applyalberta.ca" target="_blank" rel="noopener noreferrer">Apply on ApplyAlberta →</a>
     </div>
 
     <div class="institution-strip">
-      <p>Searching across</p>
+      <p>Searched across all 26 publicly-funded Alberta post-secondaries</p>
       <div class="inst-logos">
         <span>U of A</span><span>U of C</span><span>MacEwan</span><span>MRU</span>
         <span>SAIT</span><span>NAIT</span><span>Bow Valley</span><span>Red Deer Poly</span>
-        <span>Lethbridge</span><span>Athabasca</span><span>+ 16 more</span>
+        <span>Lethbridge</span><span>Athabasca</span><span>Concordia</span><span>+ 15 more</span>
       </div>
     </div>
   </div>
 
 </main>
+
+<!-- ══ AI GOVERNANCE MODAL ══ -->
+<div id="gov-modal" class="modal-overlay hidden" onclick="closeGovModalOutside(event)">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-header">
+      <h2 id="modal-title">🛡️ AI Governance Statement</h2>
+      <button class="modal-close" onclick="closeGovModal()">✕</button>
+    </div>
+    <div class="modal-body" id="gov-modal-body">
+      <p style="color:#666;font-size:14px">Run a search to populate the full governance statement for your session.</p>
+    </div>
+  </div>
+</div>
 
 <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
